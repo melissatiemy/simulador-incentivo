@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simulador de Incentivo de Vendas</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f6f9; color: #1a1a1a; min-height: 100vh; padding: 24px 16px; }
+  .container { max-width: 700px; margin: 0 auto; }
+
+  .header { background: #1a3a6b; color: #fff; border-radius: 12px; padding: 18px 24px; margin-bottom: 24px; }
+  .header h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .header p { font-size: 13px; opacity: .75; }
+
+  .progress { display: flex; gap: 8px; margin-bottom: 24px; }
+  .progress-item { flex: 1; }
+  .progress-bar { height: 4px; border-radius: 2px; background: #d1d5db; margin-bottom: 4px; transition: background .3s; }
+  .progress-bar.active { background: #1a3a6b; }
+  .progress-label { font-size: 10px; color: #9ca3af; text-align: center; transition: color .3s; }
+  .progress-label.active { color: #1a3a6b; font-weight: 600; }
+
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+
+  .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .step-num { width: 30px; height: 30px; border-radius: 50%; background: #1a3a6b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .step-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 5px; font-weight: 500; }
+  .field .hint { font-size: 11px; color: #9ca3af; margin-top: 4px; line-height: 1.4; }
+  input[type="number"], input[type="text"], select {
+    width: 100%; padding: 9px 12px; font-size: 14px;
+    border: 1px solid #d1d5db; border-radius: 8px;
+    background: #fff; color: #1a1a1a; outline: none;
+    transition: border-color .2s;
+  }
+  input[type="number"]:focus, input[type="text"]:focus, select:focus { border-color: #1a3a6b; }
+  input[type="range"] { width: 100%; accent-color: #1a3a6b; cursor: pointer; }
+
+  .month-grid-label { font-size: 12px; color: #6b7280; font-weight: 500; margin-bottom: 8px; }
+  .month-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .month-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .month-cell span { font-size: 10px; color: #9ca3af; }
+  .month-cell input { text-align: center; padding: 5px 2px; font-size: 12px; }
+  .grid-hint { font-size: 11px; color: #9ca3af; margin-top: 6px; line-height: 1.4; }
+
+  .alert { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; line-height: 1.5; }
+  .alert-info { background: #eff6ff; border: 1px solid #93c5fd; color: #1e40af; }
+  .alert-warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .alert-danger { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+  .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+
+  .total-bar { background: #f3f4f6; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #6b7280; margin-top: 4px; }
+  .total-bar strong { color: #1a1a1a; }
+
+  .btn-primary { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; background: #1a3a6b; color: #fff; border: none; border-radius: 8px; cursor: pointer; margin-top: 16px; transition: background .2s; }
+  .btn-primary:hover { background: #15316b; }
+  .btn-primary:disabled { background: #d1d5db; color: #9ca3af; cursor: not-allowed; }
+  .btn-secondary { width: 100%; padding: 10px; font-size: 13px; background: #fff; color: #6b7280; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; margin-top: 8px; transition: background .2s; }
+  .btn-secondary:hover { background: #f9fafb; }
+
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .metric { background: #f3f4f6; border-radius: 8px; padding: 12px 14px; }
+  .metric.highlight { background: #eff6ff; border: 1px solid #93c5fd; }
+  .metric .m-label { font-size: 11px; color: #6b7280; font-weight: 500; margin-bottom: 4px; }
+  .metric.highlight .m-label { color: #1e40af; }
+  .metric .m-value { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+  .metric.highlight .m-value { color: #1e3a8a; }
+  .metric .m-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+  .metric.highlight .m-sub { color: #3b82f6; }
+
+  .dist-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+  .divider { border: none; border-top: 1px solid #e5e7eb; margin: 16px 0; }
+  .footer-note { font-size: 12px; color: #9ca3af; line-height: 1.6; }
+  .footer-note strong { color: #6b7280; }
+
+  @media (max-width: 480px) {
+    .month-grid { grid-template-columns: repeat(4, 1fr); }
+    .metrics { grid-template-columns: 1fr; }
+    .dist-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>Simulador de incentivo de vendas</h1>
+    <p>Preencha as etapas para calcular seu prêmio estimado</p>
+  </div>
+
+  <div class="progress">
+    <div class="progress-item"><div class="progress-bar active" id="pb0"></div><div class="progress-label active" id="pl0">Contrato</div></div>
+    <div class="progress-item"><div class="progress-bar" id="pb1"></div><div class="progress-label" id="pl1">Faturamento</div></div>
+    <div class="progress-item"><div class="progress-bar" id="pb2"></div><div class="progress-label" id="pl2">Distribuição</div></div>
+    <div class="progress-item"><div class="progress-bar" id="pb3"></div><div class="progress-label" id="pl3">Resultado</div></div>
+  </div>
+
+  <!-- STEP 0: Contrato -->
+  <div class="card" id="step0">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">Dados do contrato</div>
+    </div>
+
+    <div class="field">
+      <label>Tipo de contrato</label>
+      <select id="tipoContrato" onchange="onTipoChange()">
+        <option value="adicional">Adicional / renegociação</option>
+        <option value="oneshot">One Shot (pagamento único)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Duração do novo contrato (meses)</label>
+      <input type="number" id="duracao" value="12" min="1" max="60" oninput="onDuracaoChange()" />
+      <div class="hint">Máximo de 12 meses será considerado no cálculo para contratos até 23 meses.</div>
+    </div>
+
+    <div class="field">
+      <label id="inflacaoLabel">Inflação a considerar: 5,0%</label>
+      <input type="range" id="inflacao" min="0" max="20" step="0.5" value="5" oninput="onInflacaoChange()" />
+    </div>
+
+    <div id="alertDuracao" class="alert alert-info" style="display:none"></div>
+    <div id="alertOneshot" class="alert alert-warn" style="display:none">
+      Contrato One Shot: o valor total será dividido por 12 para obter a base mensal.
+    </div>
+
+    <button class="btn-primary" onclick="goStep(1)">Próximo: faturamento →</button>
+  </div>
+
+  <!-- STEP 1: Faturamento -->
+  <div class="card" id="step1" style="display:none">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">Faturamento</div>
+    </div>
+
+    <div class="month-grid-label">Faturamento anterior — últimos 12 meses (R$)</div>
+    <div class="month-grid" id="gridAnterior"></div>
+    <div class="grid-hint">Deixe em branco os meses sem faturamento. O Valor Inicial será o maior entre a média dos meses preenchidos e o último mês faturado.</div>
+
+    <hr class="divider" style="margin-top:20px" />
+
+    <div id="novoContratoArea">
+      <div class="month-grid-label" id="novoLabel">Novo contrato — primeiros 12 meses (R$)</div>
+      <div class="month-grid" id="gridNovo"></div>
+    </div>
+
+    <div id="oneshotArea" style="display:none">
+      <div class="field">
+        <label>Valor total do contrato One Shot (R$)</label>
+        <input type="number" id="oneshotVal" min="0" placeholder="Ex: 120000" />
+        <div class="hint">Será dividido por 12 automaticamente para obter o valor mensal.</div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="goStep(2)">Próximo: distribuição →</button>
+    <button class="btn-secondary" onclick="goStep(0)">Voltar</button>
+  </div>
+
+  <!-- STEP 2: Distribuição -->
+  <div class="card" id="step2" style="display:none">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">Distribuição do incentivo</div>
+    </div>
+
+    <div class="alert alert-info">
+      O total máximo é 4%. O Head pode redistribuir conforme necessário, respeitando esse limite.
+    </div>
+
+    <div class="field">
+      <label id="headLabel">Head CBG: 1%</label>
+      <input type="range" id="headPct" min="0" max="4" step="0.5" value="1" oninput="onPctChange()" />
+    </div>
+    <div class="field">
+      <label id="liderLabel">Líder da venda CBG: 2%</label>
+      <input type="range" id="liderPct" min="0" max="4" step="0.5" value="2" oninput="onPctChange()" />
+    </div>
+    <div class="field">
+      <label id="timeLabel">Time CBG: 1%</label>
+      <input type="range" id="timePct" min="0" max="4" step="0.5" value="1" oninput="onPctChange()" />
+    </div>
+
+    <div id="alertPct" style="display:none" class="alert alert-danger"></div>
+    <div id="totalBar" class="total-bar"></div>
+
+    <button class="btn-primary" id="btnCalcular" onclick="calcular()">Calcular incentivo</button>
+    <button class="btn-secondary" onclick="goStep(1)">Voltar</button>
+  </div>
+
+  <!-- STEP 3: Resultado -->
+  <div id="step3" style="display:none">
+    <div class="card">
+      <div class="step-header">
+        <div class="step-num">✓</div>
+        <div class="step-title">Resultado da simulação</div>
+      </div>
+      <div id="statusAlert"></div>
+      <div class="metrics" id="metricsGrid"></div>
+    </div>
+    <div class="card" id="distCard" style="display:none">
+      <p style="font-size:14px;font-weight:600;margin-bottom:14px">Distribuição individual</p>
+      <div class="dist-grid" id="distGrid"></div>
+      <div id="alertRecalculo" class="alert alert-warn" style="display:none;margin-top:12px"></div>
+      <hr class="divider" />
+      <p class="footer-note">O valor será depositado em <strong>folha de pagamento</strong> após o <strong>3º mês de faturamento</strong> do valor incremental. Em caso de cancelamento ou inadimplência do cliente, o incentivo não será devido.</p>
+    </div>
+    <button class="btn-secondary" onclick="resetar()">Nova simulação</button>
+  </div>
+
+</div>
+
+<script>
+const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+function fmt(n) {
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtPct(n) { return n.toFixed(1) + "%"; }
+
+function buildGrid(containerId, count) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  for (let i = 0; i < count; i++) {
+    const cell = document.createElement("div");
+    cell.className = "month-cell";
+    cell.innerHTML = `<span>${MESES[i % 12]}</span><input type="number" min="0" placeholder="0" id="${containerId}_${i}" />`;
+    el.appendChild(cell);
+  }
+}
+
+function getGridValues(containerId, count) {
+  const vals = [];
+  for (let i = 0; i < count; i++) {
+    const el = document.getElementById(`${containerId}_${i}`);
+    vals.push(parseFloat(el?.value) || 0);
+  }
+  return vals;
+}
+
+function onTipoChange() {
+  const tipo = document.getElementById("tipoContrato").value;
+  document.getElementById("alertOneshot").style.display = tipo === "oneshot" ? "block" : "none";
+}
+
+function onDuracaoChange() {
+  const d = parseInt(document.getElementById("duracao").value) || 12;
+  if (d >= 24) {
+    document.getElementById("alertDuracao").style.display = "block";
+    document.getElementById("alertDuracao").textContent = `Contrato de ${d} meses: o incentivo será calculado nos primeiros 12 meses e recalculado no mês 13.`;
+  } else {
+    document.getElementById("alertDuracao").style.display = "none";
+  }
+}
+
+function onInflacaoChange() {
+  const v = parseFloat(document.getElementById("inflacao").value);
+  document.getElementById("inflacaoLabel").textContent = `Inflação a considerar: ${fmtPct(v)}`;
+}
+
+function onPctChange() {
+  const h = parseFloat(document.getElementById("headPct").value);
+  const l = parseFloat(document.getElementById("liderPct").value);
+  const t = parseFloat(document.getElementById("timePct").value);
+  document.getElementById("headLabel").textContent = `Head CBG: ${fmtPct(h)}`;
+  document.getElementById("liderLabel").textContent = `Líder da venda CBG: ${fmtPct(l)}`;
+  document.getElementById("timeLabel").textContent = `Time CBG: ${fmtPct(t)}`;
+  const total = h + l + t;
+  const alertEl = document.getElementById("alertPct");
+  const btnEl = document.getElementById("btnCalcular");
+  if (total > 4) {
+    alertEl.style.display = "block";
+    alertEl.textContent = `Total de ${fmtPct(total)} ultrapassa o limite de 4%. Ajuste os percentuais.`;
+    btnEl.disabled = true;
+  } else {
+    alertEl.style.display = "none";
+    btnEl.disabled = false;
+  }
+  document.getElementById("totalBar").innerHTML = `Total alocado: <strong>${fmtPct(total)}</strong> de 4% máximo`;
+}
+
+function goStep(n) {
+  [0,1,2,3].forEach(i => {
+    const el = document.getElementById(`step${i}`);
+    if (el) el.style.display = i === n ? "block" : "none";
+    document.getElementById(`pb${i}`).classList.toggle("active", i <= n);
+    document.getElementById(`pl${i}`).classList.toggle("active", i <= n);
+  });
+
+  if (n === 1) {
+    const dur = parseInt(document.getElementById("duracao").value) || 12;
+    const tipo = document.getElementById("tipoContrato").value;
+    const novoCols = Math.min(dur, 12);
+    buildGrid("gridAnterior", 12);
+    if (tipo === "oneshot") {
+      document.getElementById("novoContratoArea").style.display = "none";
+      document.getElementById("oneshotArea").style.display = "block";
+    } else {
+      document.getElementById("novoContratoArea").style.display = "block";
+      document.getElementById("oneshotArea").style.display = "none";
+      document.getElementById("novoLabel").textContent = `Novo contrato — primeiros ${novoCols} meses (R$)`;
+      buildGrid("gridNovo", novoCols);
+    }
+  }
+
+  if (n === 2) { onPctChange(); }
+}
+
+function calcValorInicial(vals) {
+  const preench = vals.filter(v => v > 0);
+  if (preench.length === 0) return 0;
+  const media = preench.reduce((a, b) => a + b, 0) / preench.length;
+  const ultimo = preench[preench.length - 1];
+  return Math.max(media, ultimo);
+}
+
+function calcular() {
+  const dur = parseInt(document.getElementById("duracao").value) || 12;
+  const inflacao = parseFloat(document.getElementById("inflacao").value) / 100;
+  const tipo = document.getElementById("tipoContrato").value;
+  const headPct = parseFloat(document.getElementById("headPct").value);
+  const liderPct = parseFloat(document.getElementById("liderPct").value);
+  const timePct = parseFloat(document.getElementById("timePct").value);
+
+  const mesesConsiderados = Math.min(dur, 12);
+  const anteriores = getGridValues("gridAnterior", 12);
+  const valorInicialMensal = calcValorInicial(anteriores);
+
+  let valorFinalMensal;
+  if (tipo === "oneshot") {
+    valorFinalMensal = (parseFloat(document.getElementById("oneshotVal").value) || 0) / 12;
+  } else {
+    const novos = getGridValues("gridNovo", mesesConsiderados).filter(v => v > 0);
+    valorFinalMensal = novos.length > 0 ? novos.reduce((a, b) => a + b, 0) / novos.length : 0;
+  }
+
+  const valorInicialAnual = valorInicialMensal * mesesConsiderados;
+  const valorFinalAnual = valorFinalMensal * mesesConsiderados;
+  const base = valorFinalAnual - valorInicialAnual * (1 - inflacao);
+  const elegivel = base > 0;
+  const totalIncentivo = elegivel ? base * 0.04 : 0;
+
+  const metricsEl = document.getElementById("metricsGrid");
+  metricsEl.innerHTML = `
+    <div class="metric"><div class="m-label">Valor inicial mensal</div><div class="m-value">R$ ${fmt(valorInicialMensal)}</div><div class="m-sub">maior entre média e último mês</div></div>
+    <div class="metric"><div class="m-label">Valor final mensal</div><div class="m-value">R$ ${fmt(valorFinalMensal)}</div><div class="m-sub">média dos ${mesesConsiderados} meses</div></div>
+    <div class="metric"><div class="m-label">Base de cálculo anual</div><div class="m-value">R$ ${fmt(base > 0 ? base : 0)}</div><div class="m-sub">valor final − valor inicial × (1 − inflação)</div></div>
+    <div class="metric ${elegivel ? "highlight" : ""}"><div class="m-label">Incentivo total (4%)</div><div class="m-value">R$ ${fmt(totalIncentivo)}</div><div class="m-sub">${elegivel ? "a receber após 3º mês" : "não elegível"}</div></div>
+  `;
+
+  document.getElementById("statusAlert").innerHTML = elegivel
+    ? `<div class="alert alert-success">Parabéns! Esta venda é elegível para incentivo de vendas.</div>`
+    : `<div class="alert alert-danger">Não elegível. O Valor Final não supera o Valor Inicial ajustado pela inflação.</div>`;
+
+  const distCard = document.getElementById("distCard");
+  if (elegivel) {
+    distCard.style.display = "block";
+    document.getElementById("distGrid").innerHTML = `
+      <div class="metric"><div class="m-label">Head (${fmtPct(headPct)})</div><div class="m-value">R$ ${fmt(base * headPct / 100)}</div></div>
+      <div class="metric"><div class="m-label">Líder (${fmtPct(liderPct)})</div><div class="m-value">R$ ${fmt(base * liderPct / 100)}</div></div>
+      <div class="metric"><div class="m-label">Time (${fmtPct(timePct)})</div><div class="m-value">R$ ${fmt(base * timePct / 100)}</div></div>
+    `;
+    const alertRec = document.getElementById("alertRecalculo");
+    if (dur >= 24) {
+      alertRec.style.display = "block";
+      alertRec.textContent = `Contrato de ${dur} meses: o incentivo será recalculado no mês 13 caso haja incremento.`;
+    } else {
+      alertRec.style.display = "none";
+    }
+  } else {
+    distCard.style.display = "none";
+  }
+
+  goStep(3);
+}
+
+function resetar() {
+  document.getElementById("duracao").value = 12;
+  document.getElementById("inflacao").value = 5;
+  document.getElementById("headPct").value = 1;
+  document.getElementById("liderPct").value = 2;
+  document.getElementById("timePct").value = 1;
+  document.getElementById("tipoContrato").value = "adicional";
+  document.getElementById("oneshotVal") && (document.getElementById("oneshotVal").value = "");
+  onInflacaoChange(); onDuracaoChange();
+  goStep(0);
+}
+
+onPctChange();
+</script>
+</body>
+</html>
